@@ -36,7 +36,7 @@ The application is distributed as a one-folder build: a folder containing `Spekt
 
 ## Status
 
-**Working Alpha — Windows x64 only.**
+**Working Beta — Windows x64 only.**
 
 This is an early, experimental build. It runs the full spektrafilm pipeline and GUI on Windows without a Python environment. Expect rough edges. With a compatible GPU, previews are sub-second and a full-resolution scan takes on the order of ten seconds; without one, the application falls back to the CPU path automatically and full-resolution processing is slow by nature of the spectral model (see Performance). There is no installer; it is a portable folder. macOS and Linux are not provided here; users on those platforms should run upstream spektrafilm directly.
 
