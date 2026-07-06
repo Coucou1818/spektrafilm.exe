@@ -2,7 +2,7 @@
 
 A portable, standalone Windows build of Andrea Volpato's **spektrafilm**, packaged as a double-clickable application with no Python installation required. This repository exists to make spektrafilm's spectral film-simulation GUI accessible to Windows users who do not want to set up a Python environment, `uv`, or build the application themselves.
 
-This is a packaging project. All of the simulation science, the GUI, and the photographic model are Andrea Volpato's work. This repository contributes only the Windows freezing, the launcher, and the fixes required to make the application run correctly as a self-contained executable.
+This began as a packaging project. All of the simulation science and the photographic model are Andrea Volpato's work. This repository contributes the Windows freezing, the launcher, the fixes required to make the application run correctly as a self-contained executable, and — as of v.a.0.2 — **GPU acceleration** of the pipeline (via wgpu, with automatic CPU fallback), a dedicated **export panel**, and import-stage conveniences. The simulation model itself is never modified: every GPU kernel is validated against the CPU reference within documented tolerances (102 automated parity tests), so the physics stays Andrea's, just faster.
 
 ---
 
@@ -13,7 +13,7 @@ spektrafilm is a research project by **Andrea Volpato**: an end-to-end, physical
 - Upstream project: https://github.com/andreavolpato/spektrafilm
 - Development discussion: https://discuss.pixls.us/t/spectral-film-simulations-from-scratch/48209
 
-This build tracks upstream **v0.3.2**. It does not modify the simulation model. The only source-level changes are the minimum required to make the frozen executable locate its data and run on Windows (documented in the Log below). For the meaning of every control, the methodology, and the model itself, refer to Andrea Volpato's repository and the pixls.us thread. If you find this useful, please consider supporting Andrea's work directly.
+This build tracks upstream **v0.3.2**. It does not modify the simulation model: the source-level changes are the freezing fixes (documented in the Log below) plus a GPU compute backend and GUI additions that compute the same results faster — each GPU kernel is parity-tested against the CPU path it replaces. For the meaning of every control, the methodology, and the model itself, refer to Andrea Volpato's repository and the pixls.us thread. If you find this useful, please consider supporting Andrea's work directly.
 
 ---
 
@@ -29,6 +29,7 @@ The application is distributed as a one-folder build: a folder containing `Spekt
 
 ### Releases Log
 
+- **v.a.0.2** (2026-07-06) — **GPU acceleration release.** The spectral pipeline now runs on the GPU via [wgpu](https://github.com/pygfx/wgpu-py) (Vulkan/DX12) with automatic CPU fallback when no compatible GPU is present. Full 24 MP scan: **41 s → 9.4 s** on the test machine (RTX 4070 SUPER); full-precision export: 4+ minutes → **10.3 s**. Every GPU kernel is validated against the CPU reference (102 automated parity tests; the simulation math is unchanged). Also new: a dedicated **Export panel** (8-bit JPEG, true 16-bit TIFF/PNG from the float render, selectable color profile with embedded ICC, flat/linear or tonally-normal encoding, non-blocking with progress and cancel); **Import RGB white balance** (as-shot / daylight / tungsten / custom temperature+tint for TIFF/PNG/JPEG input) with auto re-import on setting changes; a live **GPU/CPU toggle** and backend status in the GUI. Based on upstream spektrafilm v0.3.2.
 - **v.a.0.1** — First public Windows build. Based on upstream spektrafilm v0.3.2. PyInstaller one-folder build with splash screen and custom icon.
 
 ---
@@ -37,7 +38,7 @@ The application is distributed as a one-folder build: a folder containing `Spekt
 
 **Working Alpha — Windows x64 only.**
 
-This is an early, experimental build. It runs the full spektrafilm pipeline and GUI on Windows without a Python environment. Expect rough edges. Full-resolution processing is slow by nature of the spectral model (see Import Settings). There is no installer; it is a portable folder. macOS and Linux are not provided here; users on those platforms should run upstream spektrafilm directly.
+This is an early, experimental build. It runs the full spektrafilm pipeline and GUI on Windows without a Python environment. Expect rough edges. With a compatible GPU, previews are sub-second and a full-resolution scan takes on the order of ten seconds; without one, the application falls back to the CPU path automatically and full-resolution processing is slow by nature of the spectral model (see Performance). There is no installer; it is a portable folder. macOS and Linux are not provided here; users on those platforms should run upstream spektrafilm directly.
 
 ---
 
@@ -51,7 +52,9 @@ The simulation expects **linear, scene-referred** input, with or without a trans
 
 **Prepared linear images** can be loaded through the file loader. The loader imports 16-bit and 32-bit image files as new layers using OpenImageIO. PNG, TIFF, and EXR are known to work, and other formats may work too. For best results keep the image scene-referred and linear, ideally a 16-bit or 32-bit float TIFF/EXR in a wide-gamut color space such as linear Rec2020 or linear ProPhoto RGB.
 
-**Performance note.** The simulation is slow for full-resolution images. Adjust most values using **PREVIEW**, which works on a scaled image. When you need a final image, use **SCAN**, which bypasses image scaling.
+**White balance on import.** Both the RAW importer and the RGB file loader offer white balance modes (`as shot`, `daylight`, `tungsten`, `custom` with temperature and tint). For RGB files the adjustment is a Von Kries chromatic adaptation applied in the linear light of the declared input color space, and changing any import setting automatically re-imports the loaded file. An optional "16-bit recovery" adds a small contrast and color-density punch to compensate the flatter look a display-encoded TIFF/JPEG has versus a RAW.
+
+**Performance note.** With a compatible GPU, adjust values with **PREVIEW** (sub-second) and use **SCAN** for finals (~10 s at 24 MP). On CPU-only machines the old advice stands: the simulation is slow at full resolution, so work with PREVIEW and reserve SCAN for the final image.
 
 For the full list of controls and their behavior, refer to the upstream documentation and the in-GUI tooltips.
 
@@ -59,11 +62,23 @@ For the full list of controls and their behavior, refer to the upstream document
 
 ## Performance
 
-This build keeps numba's JIT compilation active, so core processing speed matches the native Python application rather than being penalized by packaging. Reaching this took some trial and error: an earlier route (documented in the Log) ran 2–4x slower because numba was disabled in the frozen build. The current PyInstaller build resolves that.
+As of v.a.0.2 this build runs the heavy per-pixel spectral math on the **GPU** through [wgpu](https://github.com/pygfx/wgpu-py) (Vulkan/DX12 on Windows). Measured on the build machine (24 MP RAW, RTX 4070 SUPER):
 
-The raw spectral computation runs on the same interpreter and the same numba-compiled machine code as the native application, so a full SCAN is not faster here, it is identical. What can feel more fluid is everything around that: launch, GUI responsiveness, switching settings, and triggering previews. Because all dependencies are bundled and laid out for fast loading, startup and general interaction carry less overhead than launching the native app and importing its large dependency tree from scattered files. In practice the app shell can feel noticeably snappier even though the math itself is unchanged.
+| Render | CPU only | GPU |
+| --- | --- | --- |
+| Full scan | 36–41 s | **9.4 s** |
+| Full-precision export (exact per-pixel spectra, LUT off) | ~4.2 min | **10.3 s** |
+| Preview | seconds | sub-second |
 
-That said, spektrafilm is computationally heavy by design. It is a full spectral simulation, not a LUT, so even at full speed PREVIEW and SCAN take real time. Processing time scales with image resolution and depends on your hardware. Use PREVIEW for adjustments and SCAN for finals, as noted above. This is the expected cost of a physically based model, not a packaging defect.
+How this stays faithful to Andrea's model:
+
+- **Parity over speed.** Every GPU kernel is validated against the CPU reference it replaces, within documented tolerances (102 automated tests: strict per-pixel bounds for deterministic kernels, statistical moment/spectrum tests for the stochastic grain). The simulation math is not altered — it is the same computation on different silicon.
+- **The CPU path is never removed.** If no compatible GPU is present, or wgpu fails to initialize, every stage falls back to the original CPU implementation automatically. A status label in the GUI shows the active backend, and a tick box lets you force CPU at runtime to compare.
+- The GPU work includes a precision-refined software power function in the shaders (the hardware one is not accurate enough for the parity budgets) and "resident" chains that keep whole stages on the GPU between kernels instead of round-tripping through system memory.
+
+numba's JIT remains active for the CPU path, so CPU-only machines still get the full native speed (reaching that took some trial and error — an earlier packaging route ran 2–4x slower because numba was disabled in the frozen build; see the Log).
+
+spektrafilm remains computationally heavy by design: it is a full spectral simulation, not a LUT. Processing time scales with resolution and hardware. Use PREVIEW for adjustments and SCAN for finals.
 
 ---
 
@@ -110,6 +125,7 @@ Build command (run from the folder containing your `splash.png` and `icon.ico`):
   --collect-all superqt `
   --collect-all app_model `
   --collect-all npe2 `
+  --collect-all wgpu `
   --copy-metadata imageio `
   --copy-metadata numpy `
   --copy-metadata napari `
@@ -129,6 +145,7 @@ Build command (run from the folder containing your `splash.png` and `icon.ico`):
 Notes on the flags:
 
 - `--collect-all numba` and `--collect-all llvmlite` are essential. They bundle numba and its LLVM backend (including the binary `llvmlite.dll`) so that numba's JIT compilation works at runtime. Without these, the hot numerical loops fall back to pure Python and the application runs several times slower.
+- `--collect-all wgpu` is essential for GPU acceleration (v.a.0.2+). It bundles wgpu's native library (`wgpu/resources/wgpu_native-release.dll`) and package data. Without it the frozen application **silently falls back to CPU** — it still works, just without the speedup — because every GPU dispatch is written to degrade gracefully. The WGSL compute shaders themselves ride along with `--collect-all spektrafilm` (they are package data under `spektrafilm/gpu/shaders/`). Check the GPU status label in the GUI's bottom bar after building.
 - `--copy-metadata` entries bundle each package's distribution metadata, which several dependencies (notably `imageio` and napari's plugin system) query at runtime via `importlib.metadata`. Missing metadata causes startup `PackageNotFoundError` failures.
 - `--splash` provides the native loading image. The splash is dismissed from within the application code (see Log).
 
@@ -139,12 +156,13 @@ The output is `dist\Spektrafilm\`, a portable one-folder build. Zip that folder 
 ## Roadmap
 
 - [x] Compilation to an `.exe` file
+- [x] GPU-accelerated preview and scan (v.a.0.2 — wgpu, parity-tested, automatic CPU fallback)
+- [x] Dedicated export panel with print-ready TIFF and web JPEG targets (v.a.0.2 — true 16-bit TIFF/PNG from the float render, selectable ICC profile, flat/linear or normal encoding, non-blocking with cancel)
 - [ ] Reworked UI/UX
 - [ ] Side-by-side view: negative/positive or before/after comparison
-- [ ] GPU-accelerated preview and scan
 - [ ] Batch processing: apply a reference look across multiple frames, with propagation and normalization
-- [ ] Dedicated export panel with print-ready TIFF and web JPEG targets
 - [ ] Additional basic controls for final post processing
+- [ ] Whole-pipeline GPU-resident renderer (single upload/readback for the entire render; targeting a few seconds per full scan)
 - [ ] Keeping the build in sync with upstream spektrafilm releases
 
 Roadmap items are aspirational and not committed timelines.
@@ -172,6 +190,16 @@ A record of what was done to produce this build, including the dead ends, in cas
 **Splash and window behavior.** A loading splash image and a custom icon were added at build time. A small block was added to the application's `main()` to maximize the main window on launch and to dismiss the PyInstaller splash (`pyi_splash.close()`) once the main window is shown, wrapped so it is a no-op when running as ordinary Python.
 
 **Result.** A portable, double-clickable Windows build that launches with a splash screen, opens maximized, imports and displays RAW files correctly, and runs at full numba-accelerated speed matching the native Python application.
+
+**GPU acceleration (v.a.0.2).** The pipeline's per-pixel spectral math was moved to the GPU through wgpu, one stage at a time, each behind a dispatch hook with automatic CPU fallback and each validated by a parity test before the next stage was started. Highlights and dead ends, in case they help anyone doing similar work:
+
+- *Kernels ported:* the 81-wavelength spectral integration (~40x alone), Gaussian and exponential blurs (mirroring the CPU's own FIR/IIR dispatch with bit-identical coefficients), density-curve interpolation, DIR-coupler correction, the stochastic grain (counter-based per-pixel RNG; statistical parity via moments and power spectrum, since a GPU cannot reproduce scipy's random stream), color matrices, the sRGB encode, and fused elementwise `10**x` / scale / `log10` tails.
+- *Hardware pow is not accurate enough.* WGSL's `pow()`/`exp2(log2())` measured ~4.4e-4 error on the target GPU — far below the 1e-5 parity budgets. The fix is a software implementation in the shaders: mantissa/exponent split by bit twiddling, an atanh-series log2 carried as a double-single (hi+lo) float pair, the product done with fused multiply-adds, and a polynomial exp2. Measured ~3e-7 — this single piece unblocked every power-law transfer function.
+- *Round-trips dominate.* Individually dispatched kernels pay a full image upload + readback each; chaining whole stages on-device ("resident" chains: develop, halation, grain, scan blur+unsharp) with one upload and one readback per stage was worth 4–7x per stage on top of the kernel speedups.
+- *Two reference-implementation surprises:* `colour`'s sRGB→sRGB `RGB_to_RGB` is not a pure encode (its rounded spec matrices do not compose to identity, ~1e-4 perturbation — the GPU replicates it exactly for parity), and real film-profile density curves are not strictly monotone (~1e-4 measurement wiggles), which silently disabled an over-defensive dispatch gate until an end-to-end benchmark caught it.
+- *Freezing:* `--collect-all wgpu` is required or the frozen build ships without `wgpu_native-release.dll` and silently runs CPU-only.
+
+Net result at 24 MP on an RTX 4070 SUPER: scan 41 s → 9.4 s, full-precision export ~4.2 min → 10.3 s, previews sub-second, 102 parity tests green, CPU path intact.
 
 ---
 
