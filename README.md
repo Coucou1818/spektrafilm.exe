@@ -2,7 +2,7 @@
 
 A portable, standalone Windows build of Andrea Volpato's **spektrafilm**, packaged as a double-clickable application with no Python installation required. This repository exists to make spektrafilm's spectral film-simulation GUI accessible to Windows users who do not want to set up a Python environment, `uv`, or build the application themselves.
 
-This began as a packaging project. All of the simulation science and the photographic model are Andrea Volpato's work. This repository contributes the Windows freezing, the launcher, the fixes required to make the application run correctly as a self-contained executable, and — as of v.b.0.1 — **GPU acceleration** of the pipeline (via wgpu, with automatic CPU fallback), a dedicated **export panel**, and import-stage conveniences. The simulation model itself is never modified: every GPU kernel is validated against the CPU reference within documented tolerances (102 automated parity tests), so the physics stays Andrea's, just faster.
+This began as a packaging project. All of the simulation science and the photographic model are Andrea Volpato's work. This repository contributes the Windows freezing, the launcher, the fixes required to make the application run correctly as a self-contained executable, and — as of v.b.0.1 / v.b.0.2 — **GPU acceleration** of the pipeline (via wgpu, with automatic CPU fallback), a dedicated **export panel**, **batch editing** (roll session, film strip, batch export, roll normalization), and import-stage conveniences. The simulation model itself is never modified: every GPU kernel is validated against the CPU reference within documented tolerances (122 automated tests), so the physics stays Andrea's, just faster.
 
 ---
 
@@ -29,6 +29,7 @@ The application is distributed as a one-folder build: a folder containing `Spekt
 
 ### Releases Log
 
+- **v.b.0.2** (2026-07-07) — **Batch editing release.** Work in rolls, not frames: a **Roll session** (multi-select import of mixed RAW/RGB files, per-frame looks that swap with the frame, position counter and navigation, "Apply look to all" reference-look propagation), a **film strip** of unedited source thumbnails under the image (embedded camera JPEG previews — instant; click to switch frames; hidden for single-image work), **batch export** ("Export roll": every frame rendered full-precision with its own look into a chosen folder, per-frame progress, cancel between frames, no-overwrite naming, sync-export-settings toggle, failing frames reported while the batch continues), and **roll normalization** ("Analyze roll" measures every frame's auto-exposure EV with outliers discarded; "Use roll exposure" stamps one shared EV on the roll so frames keep their relative brightness — re-applying replaces rather than compounds, and manual tweaks on top are preserved). All on the v.b.0.1 GPU pipeline; 122 automated tests. Based on upstream spektrafilm v0.3.2.
 - **v.b.0.1** (2026-07-06) — **GPU acceleration release.** The spectral pipeline now runs on the GPU via [wgpu](https://github.com/pygfx/wgpu-py) (Vulkan/DX12) with automatic CPU fallback when no compatible GPU is present. Full 24 MP scan: **41 s → 9.4 s** on the test machine (RTX 4070 SUPER); full-precision export: 4+ minutes → **10.3 s**. Every GPU kernel is validated against the CPU reference (102 automated parity tests; the simulation math is unchanged). Also new: a dedicated **Export panel** (8-bit JPEG, true 16-bit TIFF/PNG from the float render, selectable color profile with embedded ICC, flat/linear or tonally-normal encoding, non-blocking with progress and cancel); **Import RGB white balance** (as-shot / daylight / tungsten / custom temperature+tint for TIFF/PNG/JPEG input) with auto re-import on setting changes; a live **GPU/CPU toggle** and backend status in the GUI. Based on upstream spektrafilm v0.3.2.
 - **v.a.0.1** — First public Windows build. Based on upstream spektrafilm v0.3.2. PyInstaller one-folder build with splash screen and custom icon.
 
@@ -36,7 +37,7 @@ The application is distributed as a one-folder build: a folder containing `Spekt
 
 ## Status
 
-**Working Beta — Windows x64 only.**
+**Working Alpha — Windows x64 only.**
 
 This is an early, experimental build. It runs the full spektrafilm pipeline and GUI on Windows without a Python environment. Expect rough edges. With a compatible GPU, previews are sub-second and a full-resolution scan takes on the order of ten seconds; without one, the application falls back to the CPU path automatically and full-resolution processing is slow by nature of the spectral model (see Performance). There is no installer; it is a portable folder. macOS and Linux are not provided here; users on those platforms should run upstream spektrafilm directly.
 
@@ -158,10 +159,9 @@ The output is `dist\Spektrafilm\`, a portable one-folder build. Zip that folder 
 - [x] Compilation to an `.exe` file
 - [x] GPU-accelerated preview and scan (v.b.0.1 — wgpu, parity-tested, automatic CPU fallback)
 - [x] Dedicated export panel with print-ready TIFF and web JPEG targets (v.b.0.1 — true 16-bit TIFF/PNG from the float render, selectable ICC profile, flat/linear or normal encoding, non-blocking with cancel)
-- [ ] GPU-accelerated preview and scan (falls under 5s per frame)
-- [ ] Side-by-side view: negative/positive or before/after comparison
-- [ ] Batch processing: apply a reference look across multiple frames, with propagation and normalization
+- [x] Batch processing: apply a reference look across multiple frames, with propagation and normalization (v.b.0.2 — roll session, film strip, batch export, roll-average exposure normalization)
 - [ ] Reworked UI/UX
+- [ ] Side-by-side view: negative/positive or before/after comparison
 - [ ] Additional basic controls for final post processing
 - [ ] Whole-pipeline GPU-resident renderer (single upload/readback for the entire render; targeting a few seconds per full scan)
 - [ ] Keeping the build in sync with upstream spektrafilm releases
@@ -201,6 +201,8 @@ A record of what was done to produce this build, including the dead ends, in cas
 - *Freezing:* `--collect-all wgpu` is required or the frozen build ships without `wgpu_native-release.dll` and silently runs CPU-only.
 
 Net result at 24 MP on an RTX 4070 SUPER: scan 41 s → 9.4 s, full-precision export ~4.2 min → 10.3 s, previews sub-second, 102 parity tests green, CPU path intact.
+
+**Batch editing (v.b.0.2).** With single-frame rendering at ~10 s, the missing piece was working across a roll. The session model is adapted from NegPy (per-file settings keyed in a session store, a selected index, look propagation) with one deliberate change: frames INHERIT the look currently being developed until they get a stamped one, so a roll naturally shares the look you are dialing in. The film strip uses the camera's embedded JPEG thumbnails (no demosaic — a 36-frame roll thumbnails in seconds) loaded on worker threads. Batch export pre-resolves every frame into an immutable job list on the GUI thread (path, import treatment, look, format), then a single worker renders and writes sequentially — cancel applies between frames, a failing frame is recorded and the batch continues. Roll normalization maps NegPy's Batch Analysis onto this pipeline's per-frame automatic: it measures each frame's auto-exposure EV, discards outliers beyond 1 EV from the median, and stamps the average as one shared exposure with per-frame bookkeeping so re-applies replace instead of compounding. In practice: add a roll → develop one frame → Apply look to all → Analyze roll → Use roll exposure → Export roll → a consistent set of 16-bit scans, unattended.
 
 ---
 
