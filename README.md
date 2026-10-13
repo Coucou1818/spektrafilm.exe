@@ -114,19 +114,6 @@ result = simulate(image, params)     # image: linear RGB, (H, W, 3) float
 
 `docs/PARAMS.md` lists every parameter the GUI can set and the engine field behind it, which is the map to drive it from code.
 
-## Where the code is
-
-Start with **[`CODEMAP.md`](CODEMAP.md)**: the pipeline as a node graph, the GPU layer and its resident chains, the application's modules, and where to look for a given thing. Four generated companions carry the detail, regenerated with `python tools/gen_docs.py --all`:
-
-| File | What it answers |
-|---|---|
-| [`docs/INDEX.md`](docs/INDEX.md) | every file: lines, docstring, what it imports, which tests cover it |
-| [`docs/PARAMS.md`](docs/PARAMS.md) | every GUI field, and the engine parameter it writes |
-| [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | what came from which reference, and how that was established |
-| `docs/map/index.html` | the same graph, interactive and offline |
-
-The three packages under `src/` are upstream's, and keep his names so future merges stay possible: `spektrafilm` (the runtime), `spektrafilm_gui` (the application) and `spektrafilm_lut_creator` (LUT and OCIO export). The runtime depends on neither of the others.
-
 ## Preparing input images
 
 RAW import is built in: choose a white balance mode, pick the file, and the importer decodes through `rawpy` into the chosen input colour space. `reprocess raw` re-imports with new settings.
