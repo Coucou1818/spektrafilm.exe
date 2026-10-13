@@ -31,8 +31,6 @@ A photograph passes through four stages, each of which you can steer.
 
 **Grain** is simulated rather than overlaid, in four tiers: a layered dye-cloud particle model (the default), a fast filtered-noise preview matched to its statistics, an RMS-granularity-calibrated tier, and a Monte Carlo Boolean grain field. Magnified, the dye clouds are really there:
 
-![Magnified grain, showing the dye clouds](img/readme/gui_grain_magnified.png)
-
 Around the pipeline:
 
 - **Library.** Film, paper and filter selectors open one library with favourites, recents, tags and your own USER stocks. Taking filters (a second filter, an ND slot) are part of the camera.
