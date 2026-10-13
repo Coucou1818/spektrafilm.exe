@@ -1,0 +1,57 @@
+CHANGELOG for the film profiles and LUTs shipped with The Dyeworks
+===================================================================
+
+This file travels with SPEKTRAFILM_LICENSE.txt, which is shipped unchanged.
+Andrea Volpato's licence asks that changes to the profiles and LUTs be
+described here rather than in the licence.
+
+The profiles are in src/spektrafilm/data/profiles/ (inside the application
+folder: _internal/spektrafilm/data/profiles/). They are CC BY-SA 4.0, and so
+are LUTs made from them. The original work is
+https://github.com/andreavolpato/spektrafilm by Andrea Volpato.
+
+Baseline: spektrafilm as of commit 28bf883 (2026-07-08), the point this fork
+branched from. Everything below is measured against it.
+
+
+Version 2.1.0 (2026-10-13)
+--------------------------
+
+Unmodified (31 files). These profile files are byte-for-byte the ones in the
+baseline, and are Andrea Volpato's work:
+
+  Print papers and print films
+    fujifilm_crystal_archive_typeii, kodak_2302, kodak_2383, kodak_2393,
+    kodak_ektacolor_edge, kodak_endura_premier, kodak_portra_endura,
+    kodak_supra_endura, kodak_ultra_endura
+
+  Films
+    fujifilm_c200, fujifilm_pro_400h, fujifilm_provia_100f,
+    fujifilm_velvia_100, fujifilm_xtra_400, kodak_doublex,
+    kodak_ektachrome_100, kodak_ektar_100, kodak_gold_200,
+    kodak_kodachrome_64, kodak_portra_160, kodak_portra_400,
+    kodak_portra_800, kodak_portra_800_push1, kodak_portra_800_push2,
+    kodak_trix, kodak_ultramax_400, kodak_verita_200d, kodak_vision3_200t,
+    kodak_vision3_250d, kodak_vision3_500t, kodak_vision3_50d
+
+Modified: none. No profile of Andrea Volpato's has been edited.
+
+Added by this fork (6 files). New profiles, not derived from any profile of
+Andrea Volpato's, built from the manufacturers' published datasheets with the
+profile tools of this fork. Added by Celian Le Bolloch (Natcelian), and
+licensed CC BY-SA 4.0 like the rest:
+
+    fujifilm_eterna_250d
+    fujifilm_velvia_100f
+    kodak_ultramax_800
+    kodak_vision2_100t
+    kodak_vision2_500t
+    kodak_vision2_50d
+
+LUTs: no LUT file is shipped in the application. LUTs are made by the LUT
+export from the profiles above. Each carries the attribution and licence text
+written by src/spektrafilm_lut_creator/metadata.py.
+
+What this file does not cover: the simulation code and the rendering defaults
+of the application. Those are program code, GPL-3, described in NOTICE.md and
+the project's history, not profile changes.
