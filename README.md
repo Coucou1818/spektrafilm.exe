@@ -15,7 +15,6 @@ The same fixture (a 24 MP Fujifilm X-H1 frame), the same settings on both sides,
 | 24 MP | upstream CPU | Dyeworks CPU | Dyeworks GPU | GPU vs upstream |
 |---|---|---|---|---|
 | fast grain statistics (what the app uses) | 46.8 | 44.6 | **1.4** | 33x |
-| exact grain statistics | 71.9 | 64.6 | **40.4** | 1.8x |
 | grain off | 34.9 | 32.0 | **1.4** | 25x |
 
 The Dyeworks CPU path is the parity reference and lands within a few percent of upstream, as it should. The GPU path is pinned to it by tests, kernel by kernel. Exact statistics draw their random numbers through scipy on the CPU, so the GPU cannot help much there; the app always uses the fast statistics. Full table, method and raw numbers are in the release notes.
