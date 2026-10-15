@@ -23,16 +23,21 @@ The Dyeworks CPU path is the parity reference and lands within a few percent of 
 
 A photograph passes through four stages, each of which you can steer.
 
-**Film.** 31 film profiles as of v2.1.0, built from manufacturer datasheet measurements: the Kodak Portra, Ektar, Gold, Ultramax and Kodachrome families, the Vision2 and Vision3 motion-picture stocks, Fujifilm C200, Pro 400H, X-Tra, Velvia and Provia, plus black-and-white Double-X and Tri-X. Colour negative, colour reversal and B&W are all modelled. Push and pull, per-channel development chemistry, emulsion aging (fog, dye loss, speed change) and bleach bypass are parameters, not presets.
+**Film.** 31 film profiles as of v2.2.1, built from manufacturer datasheet measurements: the Kodak Portra, Ektar, Gold, Ultramax and Kodachrome families, the Vision2 and Vision3 motion-picture stocks, Fujifilm C200, Pro 400H, X-Tra, Velvia and Provia, plus black-and-white Double-X and Tri-X. Colour negative, colour reversal and B&W are all modelled. Push and pull, per-channel development chemistry, emulsion aging (fog, dye loss, speed change) and bleach bypass are parameters, not presets. Two exposure controls: Camera exposure is the real exposure and moves the brightness; Film exposure changes only how the film responds and holds the brightness, as the old auto compensation did.
 
-**Print.** 6 papers as of v2.1.0: the Kodak Endura family, Ektacolor Edge and Fujifilm Crystal Archive Type II, exposed through a virtual colour enlarger with dichroic Y/M/C filtration, preflashing, and toe and shoulder shaping.
+**Print.** 6 papers as of v2.2.1: the Kodak Endura family, Ektacolor Edge and Fujifilm Crystal Archive Type II, exposed through a virtual colour enlarger with dichroic Y/M/C filtration, preflashing, and toe and shoulder shaping.
 
 **Scan.** Spectral reduction to RGB, glare, lens blur and unsharp masking, then a display-referred finishing stage: exposure and white point, per-channel gains, contrast, saturation and vibrance, per-hue saturation, split toning, and a Lightroom-style point curve.
 
 **Grain** is simulated rather than overlaid, in four tiers: a layered dye-cloud particle model (the default), a fast filtered-noise preview matched to its statistics, an RMS-granularity-calibrated tier, and a Monte Carlo Boolean grain field. Magnified, the dye clouds are really there:
 
+![Magnified grain, showing the dye clouds](img/readme/gui_grain_magnified.png)
+
+![The Reco tab: Denoise, Defects, Lens correction and Highlights](img/readme/dyeworks_reco.png)
+
 Around the pipeline:
 
+- **Reco.** A tab of repairs made to the RAW before the film sees it. **Denoise**: Ansel's Clean and Deep networks on the mosaic, RawNIND's Sharp after demosaic, run once per frame in the background and kept. **Defects**: sensor dust found in the frame, or with the help of the whole roll so dust hidden by texture is found too, switched off spot by spot and divided out of the image (Fast, Precise or Heal), plus a click to add one by hand, and drag-a-circle tools to ignore a zone or to correct only inside one; the rings follow the picture through the lens correction, Barrel, rotation and crop. **Lens correction**: lensfun, and Barrel and Vignette sliders. **Highlights**: Clip, Blend or Rebuild.
 - **Library.** Film, paper and filter selectors open one library with favourites, recents, tags and your own USER stocks. Taking filters (a second filter, an ND slot) are part of the camera.
 - **Custom stocks.** A `.sfstock` recipe edits a base stock's density curves through an H&D plot, without touching its spectral data.
 - **Rolls.** A `.sfroll` file holds a set of frames and their per-frame edits; the filmstrip carries ratings and a light-table view.
@@ -59,14 +64,14 @@ Couplers are what make it look like film rather than a curve. Masking couplers g
 
 ## Install and run
 
-**The application is a Windows build**, published on the [releases page](https://github.com/natcelian/spektrafilm.exe/releases). `The Dyeworks 2.1.0` ships as a one-folder PyInstaller bundle: run `TheDyeworks.exe` from it. One-folder rather than one-file is deliberate, because PySide6 is LGPL and a recipient must be able to relink it (`NOTICE.md` §5.1).
+**The application is a Windows build**, published on the [releases page](https://github.com/natcelian/spektrafilm.exe/releases). `The Dyeworks 2.2.1` ships as a one-folder PyInstaller bundle: run `TheDyeworks.exe` from it. One-folder rather than one-file is deliberate, because PySide6 is LGPL and a recipient must be able to relink it (`NOTICE.md` §5.1).
 
 To build it from a checkout:
 
 ```bash
 python -m PyInstaller --clean --noconfirm Spektrafilm.spec
 python tools/finish_build.py     # lifts LICENSE/NOTICE/README/icons to the bundle root
-python tools/frozen_smoke.py     # 26 checks; a build that fails this does not ship
+python tools/frozen_smoke.py     # 29 checks; a build that fails this does not ship
 ```
 
 ### Developer setup
@@ -111,6 +116,19 @@ result = simulate(image, params)     # image: linear RGB, (H, W, 3) float
 ```
 
 `docs/PARAMS.md` lists every parameter the GUI can set and the engine field behind it, which is the map to drive it from code.
+
+## Where the code is
+
+Start with **[`CODEMAP.md`](CODEMAP.md)**: the pipeline as a node graph, the GPU layer and its resident chains, the application's modules, and where to look for a given thing. Four generated companions carry the detail, regenerated with `python tools/gen_docs.py --all`:
+
+| File | What it answers |
+|---|---|
+| [`docs/INDEX.md`](docs/INDEX.md) | every file: lines, docstring, what it imports, which tests cover it |
+| [`docs/PARAMS.md`](docs/PARAMS.md) | every GUI field, and the engine parameter it writes |
+| [`docs/PROVENANCE.md`](docs/PROVENANCE.md) | what came from which reference, and how that was established |
+| `docs/map/index.html` | the same graph, interactive and offline |
+
+The three packages under `src/` are upstream's, and keep his names so future merges stay possible: `spektrafilm` (the runtime), `spektrafilm_gui` (the application) and `spektrafilm_lut_creator` (LUT and OCIO export). The runtime depends on neither of the others.
 
 ## Preparing input images
 
