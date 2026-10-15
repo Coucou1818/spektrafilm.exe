@@ -210,8 +210,8 @@ for an omission.
 ## 5. Bundled third-party components
 
 Read from the installed distribution metadata of the environment that produces
-the release build, not from memory. Versions are those of the 2026-10-12
-build.
+the release build, not from memory. Versions are those of the 2026-10-14
+build (2.2.1).
 
 | Component | Version | Licence | Notes |
 |---|---|---|---|
@@ -231,7 +231,15 @@ build.
 | OpenImageIO | 3.1.17.0 | Apache-2.0 | |
 | rawpy | 0.26.1 | MIT | **Bundles LibRaw, which is LGPL-2.1**, see §5.2 |
 | python-exiv2 | 0.18.1 | GPL-3.0-or-later | Compatible; reinforces the GPL-3 obligation |
+| lensfunpy | 1.18.0 | MIT | Wraps lensfun (LGPL-3.0) and ships `lensfun.dll`, its lens database (CC BY-SA 3.0) and the glib, PCRE2, libiconv and gettext runtime DLLs it was built with, see §5.6 |
+| pyFFTW | 0.15.1 | BSD-3-Clause | Ships the FFTW3 DLLs, which are GPL-2.0-or-later, see §5.6 |
+| opencolorio | 2.6.0 | BSD-3-Clause | OpenColorIO's Python bindings and library |
+| matplotlib | 3.11.1 | Matplotlib licence (PSF-based) | With contourpy 1.3.3 (BSD-3-Clause), kiwisolver 1.5.1 (BSD-3-Clause) and python-dateutil 2.9.0 (BSD-3-Clause OR Apache-2.0) |
+| certifi, charset-normalizer | 2026.7.22, 3.5.1 | MPL-2.0, MIT | certifi's CA bundle is an unmodified MPL-2.0 file |
 | psutil | 7.2.2 | BSD-3-Clause | |
+| onnxruntime | 1.31.0 | MIT | Runs the Reco tab's denoise networks, see §5.4 |
+| flatbuffers | 25.12.19 | Apache-2.0 | onnxruntime's dependency |
+| protobuf | 7.36.2 | BSD-3-Clause | onnxruntime's dependency |
 | PyInstaller | 6.20.0 | GPL-2.0 with a bootloader exception | Build tool; its exception permits shipping the bootloader with any licence |
 | Bricolage Grotesque, Geist, Geist Mono, Inter, Chivo Mono, Archivo, Azeret Mono, Arimo, Noto Sans Mono | n/a | SIL OFL 1.1 | Bundled typefaces, see §5.3 |
 
@@ -277,6 +285,51 @@ outright on 2026-09-03 (`design/DECISIONS.md`) rather than shipped
 unlicensed, and a test enforces that the trial files cannot re-enter the
 build. Nothing here is waiting on a font purchase.
 
+### 5.4 The Reco tab's denoise networks: GPL-3.0, bundled
+
+| What | Used for | Source | Licence |
+|---|---|---|---|
+| Ansel denoise, `denoise-large-single-v1` | Clean | Aurelien Pierre, github.com/aurelienpierreeng/ansel-denoise | GPL-3.0 |
+| Ansel denoise, `denoise-large-multi-v1` (coarse and fine) | Deep | the same | GPL-3.0 |
+| RawNIND UtNet2, Linear | Sharp | Brummer and De Vleeschouwer, as released for darktable (darktable-ai, rawdenoise-nind 5.6.0) | GPL-3.0 |
+| darktable's `noiseprofiles.json` | the noise level Ansel is told | darktable | GPL-3.0 |
+
+The weights are converted to ONNX graphs and otherwise unchanged. GPL-3.0 is the
+licence of this program as well, so they travel with it under the same terms.
+The code that tiles the frame, sets the noise scale and fuses the low bands
+(`spektrafilm/utils/raw_denoise.py`) is this fork's port of the published
+architecture. The licence texts and sources are in `licenses/Recover-models.txt`
+and beside the files in `_internal/spektrafilm/data/recover/`, which also holds a
+manifest of their sha256 checksums that the program checks before it loads one.
+The Ansel Training Data License covers training tiles that this program does not
+contain.
+
+The model files are about 97 MB and are not in the repository; the build takes
+them from the folder `SPEKTRAFILM_RECOVER_MODELS` names (`Spektrafilm.spec`) and
+stops if it is missing.
+
+### 5.5 The sensor-dust core: BSD-3-Clause, built from source in this repository
+
+`src/native/sensordust/` is the SensorDust core (detection, fitting, the album and
+the removal methods), written in C++17 with no dependency beyond the standard
+library, under the **BSD 3-Clause** licence (`licenses/SensorDust-BSD-3.txt`,
+beside the sources). `tools/build_sensordust.py` compiles it with MSVC into
+`sdcore.dll`, which `spektrafilm/utils/sensordust.py` loads. The DLL is not in git;
+the release build stops without it. BSD-3-Clause is compatible with the GPL-3
+terms of the rest of the program.
+
+### 5.6 lensfun and FFTW: LGPL and GPL libraries that ride in wheels
+
+The Reco tab's lens correction calls **lensfun** through `lensfunpy`. The wheel
+carries `lensfun.dll` (**LGPL-3.0**, replaceable like the Qt libraries in §5.1,
+because the build is one-folder), the lens database in `lensfunpy/db_files/`
+(**CC BY-SA 3.0**, the lensfun project's own data) and the runtime DLLs lensfun
+needs. The database is shipped unmodified. `pyFFTW` carries the **FFTW3** DLLs,
+which are **GPL-2.0-or-later** and so compatible with this program's GPL-3 terms;
+pyFFTW's own code is BSD-3-Clause. The licence texts are in the wheels'
+`.dist-info` folders as distributed by their authors. A line-by-line sweep of the
+native libraries inside these wheels has not been made, see §7.
+
 ---
 
 ## 6. Reproducing the release binary
@@ -304,7 +357,7 @@ Recorded rather than left implicit.
   spektrafilm, not this fork. `pyproject.toml` lists Andrea Volpato first and
   Celian Le Bolloch (Natcelian) second as authors. Its package version `0.3.4`
   is the ENGINE's, Andrea's, and stays so on purpose: the product version,
-  `2.1.0`, lives in `spektrafilm_gui/branding.py` (`APP_VERSION`), and the
+  `2.2.1`, lives in `spektrafilm_gui/branding.py` (`APP_VERSION`), and the
   interface shows both.
 * The bundled-component table covers **distributions**, not every transitive
   native library inside them. LibRaw is called out because it is the one that
