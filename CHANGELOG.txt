@@ -14,6 +14,16 @@ Baseline: spektrafilm as of commit 28bf883 (2026-07-08), the point this fork
 branched from. Everything below is measured against it.
 
 
+Version 2.2.1 (2026-10-14)
+--------------------------
+
+No profile and no LUT changed since 2.2.0: the lists below still hold.
+
+Version 2.2.0 (2026-10-13)
+--------------------------
+
+No profile and no LUT changed since 2.1.0: the lists below still hold.
+
 Version 2.1.0 (2026-10-13)
 --------------------------
 
